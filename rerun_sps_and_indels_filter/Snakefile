@@ -1,0 +1,173 @@
+# start with some stuff to get the Snakemake version
+from snakemake import __version__ as snakemake_version
+smk_major_version = int(snakemake_version[0])
+
+
+
+# import modules as needed. Also import the snakemake
+# internal command to load a config file into a dict
+import pandas as pd
+
+if smk_major_version >= 8:
+  from snakemake.common.configfile import _load_configfile
+else:
+  from snakemake.io import _load_configfile
+
+
+
+# define rules that don't need to be run on a compute node.
+# i.e. those that can be run locally.
+localrules: all
+
+
+
+### Get a dict named config from Snakemake-Example/config.yaml
+configfile: "rerun_snps_and_indels_filter/config.yaml"
+
+#change the permissions of the .yaml file
+
+
+
+### Get the sample info table read into a pandas data frame
+sample_table=pd.read_table(config["sample_info"], dtype="str")
+
+
+
+### Transfer values from the yaml and tabular config to
+### our familiar lists, SAMPLES and CHROMOS
+# Populate our SAMPLES list from the sample_table using a little
+# pandas syntax
+SAMPLES=sample_table["samples"].unique().tolist()
+
+# define a function for getting the read group information
+# from the sample table for each particular sample (according
+# to the wildcard value)
+def get_read_group(wildcards):
+    """Denote sample name and platform in read group."""
+    return r"-R '@RG\tID:{sample}_{sample_id}_{library}_{flowcell}_{lane}_{barcode}\tSM:{sample_id}\tPL:{platform}\tLB:{library}\tPU:{flowcell}.{lane}.{barcode}'".format(
+        sample=wildcards.sample,
+        sample_id=sample_table.loc[(wildcards.sample), "sample_id"],
+        platform=sample_table.loc[(wildcards.sample), "platform"],
+        library=sample_table.loc[(wildcards.sample), "library"],
+        flowcell=sample_table.loc[(wildcards.sample), "flowcell"],
+        lane=sample_table.loc[(wildcards.sample), "lane"],
+        barcode=sample_table.loc[(wildcards.sample), "barcode"],
+    )
+
+
+rule all:
+  input: 
+    expand("rerun_snps_and_indels_filter/results/vcf-stats/all.vcf.stats")
+
+rule select_indels:
+  input:
+    vcf="data/Pangolin.merged_gatk.srs_filt.vcf.gz",
+    idx="data/Pangolin.merged_gatk.srs_filt.vcf.gz.tbi"
+  output:
+    "rerun_snps_and_indels_filter/results/hard_filtering/indels/select_indels.vcf.gz"
+  conda:
+    "envs/gatk.yaml"
+  log:
+    "rerun_snps_and_indels_filter/results/select_indels/logs/select_indels.log"
+  shell:
+    "gatk SelectVariants "
+    " -V {input.vcf} "
+    " -select-type INDEL "
+     " -O {output} > {log} 2>&1 " 
+ 
+rule hard_filter_indels:
+  input:
+    vcf="rerun_snps_and_indels_filter/results/hard_filtering/indels/select_indels.vcf.gz"
+  output:
+    vcf="rerun_snps_and_indels_filter/results/hard_filtering/indels/indel_filt.vcf.gz"
+  conda:
+    "envs/gatk.yaml"
+  log:
+    "rerun_snps_and_indels_filter/results/hard_filtering/log/indel_filt.log"
+  params:
+    filters=config["params"]["gatk"]["VariantFiltration"]["indels"]
+  shell:
+    "gatk VariantFiltration "
+    " -V {input.vcf} "
+    " {params.filters}      "
+    " -O {output} > {log} 2>&1 "
+
+rule select_snps:
+  input:
+    vcf="data/Pangolin.merged_gatk.srs_filt.vcf.gz",
+    idx="data/Pangolin.merged_gatk.srs_filt.vcf.gz.tbi"
+  output:
+    "rerun_snps_and_indels_filter/results/hard_filtering/snps/select_snps.vcf.gz"
+  conda:
+    "envs/gatk.yaml"
+  log:
+    "rerun_snps_and_indels_filter/results/hard_filtering/logs/select_snps.log"
+  shell:
+    "gatk SelectVariants "
+    " -V {input.vcf} "
+    " -select-type SNP "
+    " -O {output} > {log} 2>&1 " 
+
+rule hard_filter_snps:
+  input:
+    vcf="rerun_snps_and_indels_filter/results/hard_filtering/snps/select_snps.vcf.gz"
+  output:
+    vcf="rerun_snps_and_indels_filter/results/hard_filtering/snps/snps_filt.vcf.gz"
+  conda:
+    "envs/gatk.yaml"
+  log:
+    "rerun_snps_and_indels_filter/results/hard_filtering/log/snps_filt.log"
+  params:
+    filters=config["params"]["gatk"]["VariantFiltration"]["snps"]
+  shell:
+    "gatk VariantFiltration "
+    " -V {input.vcf} "
+    " {params.filters}      "
+    " -O {output} > {log} 2>&1 "
+    
+rule merge_indels_snps:
+  input:
+    indels="rerun_snps_and_indels_filter/results/hard_filtering/indels/indel_filt.vcf.gz",
+    snps="rerun_snps_and_indels_filter/results/hard_filtering/snps/snps_filt.vcf.gz"
+  output:
+    "rerun_snps_and_indels_filter/results/hard_filtering/merge_indels_and_snps.vcf.gz"
+  conda:
+    "envs/gatk.yaml"
+  log:
+    stdout= "rerun_snps_and_indels_filter/results/merged/logs/merge_indels_and_snps.stdout",
+    stderr= "rerun_snps_and_indels_filter/results/merged/logs/merge_indels_and_snps.stderr"
+  benchmark:
+    "rerun_snps_and_indels_filter/results/benchmark/merged/merge_indels_and_snps.txt"
+  shell: 
+    "gatk MergeVcfs -I {input.indels} -I {input.snps} -O {output} > {log.stdout} 2> {log.stderr}"
+    
+
+# rule missing_corrected:
+#   input:
+#     "rerun_snps_and_indels_filter/results/hard_filtering/merge_indels_and_snps.vcf.gz"
+#   output:
+#     "rerun_snps_and_indels_filter/results/missing-corrected/missing_corrected.vcf.gz"
+#   conda:
+#     "envs/bcftools.yaml"
+#   log:
+#     "rerun_snps_and_indels_filter/results/missing-corrected/log/missing_corrected.log"
+#   shell:
+#     "(bcftools +setGT {input} -- -t q -n '.' -i 'FMT/DP=0' | "
+#     "bcftools +fill-tags - | "
+#     "bcftools view -Oz > {output}; "
+#     "bcftools index {output}) 2> {log}"
+
+rule vcf_stats:
+  input:
+    "rerun_snps_and_indels_filter/results/hard_filtering/merge_indels_and_snps.vcf.gz"
+  output:
+    "rerun_snps_and_indels_filter/results/vcf-stats/all.vcf.stats"
+  conda:
+    "envs/bcftools.yaml"
+  log:
+    stdout="rerun_snps_and_indels_filter/results/log/vcf_stats.stdout"
+  shell:
+    "bcftools stats -v {input} > {output} 2> {log} "
+    
+    
+
