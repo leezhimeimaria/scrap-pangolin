@@ -7,9 +7,8 @@
 # every BCF file used here must correspond to the same
 # reference genome and thus to the same scaffold groups file.
 # These are identified here:
-fai_path: PCA/genome.fasta.fai   # this is just a file that needs to be there, but likely will not be used (make it an empty file if you want)
-scaff_group_path: PCA/scaftable.tsv  # this is the scaffold groups file you have made
-
+fai_path: PCA/genome.fasta.fai   # PCA is the relative path that I have saved in the mega-post-bcf0exploratory-snakeflows
+scaff_group_path: PCA/scaftable.tsv  
 
 
 # this is the short name and the path to the BCF file that will be used
@@ -22,7 +21,7 @@ bcf:
     path: "/home/zhimei@colostate.edu/projects/data_scrap_pangolin/pca/Pangolin.merged_gatk.srs_filt.bcf"   
     sample_subsets:
       all:
-        path: PCA/Pangolin_samplelist.txt  # get these fron bcftools query -l 
+        path: PCA/Pangolin_samplelist.txt  
  
 
 # same thing here, we can define different sets of bcftools filters
