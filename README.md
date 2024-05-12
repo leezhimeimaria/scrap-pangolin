@@ -15,18 +15,9 @@ The files that I have for this are listed under the results directory under the 
 
 ![results image](https://github.com/leezhimeimaria/scrap-pangolin/assets/157052567/56fbfeb3-1a2d-49f6-8336-b1c3d6fcfd72)
 
-A similar usage of bcftools also took place in my second part I tried to run a PCA through the convertion of the vcf file into a bcf file. A few files had to be created and these files are listed under the directory "pca."
+A similar usage of bcftools also took place in my second part I tried to run a PCA through the convertion of the vcf file into a bcf file. A few files had to be created and these files are listed under the directory "pca." The list is as follows: 
 
-The list is as follows: 
-pca/
-├── config
-│   ├── pangolin_config.yaml
-│   └── pangolin_scaftable.tsv
-├── pangolin_scafold.R
-├── resources
-│   └── genome.fasta.fai (This is a place holder file for the workflow)
-└── sample_subset
-    └── Pangolin_samplelist.txt
+![error](https://github.com/leezhimeimaria/scrap-pangolin/assets/157052567/206cdd69-aa78-412a-a9b9-3e5702fb620a)
 
 Only the scaffolds with the highest reads were selected for and this meant that from the dataset provided only HiC_scaffold_1 to 57 was seclect for to create the table below for the running of the PCA workflow. 
 
@@ -43,9 +34,10 @@ sg <- read_table(r"(C:\Users\zmmar\Documents\pangolin_scafold.R)", col_names = c
 
 write_tsv(sg, file = r"(C:\Users\zmmar\Documents\pangolin_scaftable.tsv)")
 ```
-The impass after the resolution of the divergent branches and remaking the repository is as shown below. 
+The impass after the resolution of the divergent branches and remaking the repository is as shown below
 
-![error screenshot](https://github.com/leezhimeimaria/scrap-pangolin/assets/157052567/7565fdd7-ad4e-4ee0-9601-3fb5a4a657d5)
+![error screenshot](https://github.com/leezhimeimaria/scrap-pangolin/assets/157052567/c8c460ea-e98e-445e-8d1a-c366b65074b7)
+
 
 The goal of creating the map below was to observe a correlation with the PCA. As it stands now current the map simply shows where the samples were confiscated and their country origin. The code I have listed below is what I have used to generate the map below. It should be noted because many samples are confiscated from the same location, the number of points do not indicate the number of samples they are. In other words, even though there are many more points of Nigeria, on the map it may not mean that the majority of samples came from Nigeria only that the illegal trade of it is more widespread. 
 
